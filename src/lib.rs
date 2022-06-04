@@ -10,49 +10,44 @@ mod blog;
 mod util;
 #[derive(BorshDeserialize, BorshSerialize)]
 #[near_bindgen]
-pub struct ListBlog {
-    list_blog: HashMap<String, Blog>,
+pub struct News {
+    blogs: HashMap<String, Blog>,
+    categories: HashMap<String, Blog>,
 }
 
-impl Default for ListBlog {
+impl Default for News {
     fn default() -> Self {
         Self {
-            list_blog: HashMap::new(),
+            blogs: HashMap::new(),
+            categories: HashMap::new(),
         }
     }
 }
 
 #[near_bindgen]
-impl ListBlog {
-    pub fn add_blog(&mut self, title: String, content: String) {
-        let blog = Blog {
-            author_id: env::signer_account_id(),
-            slug: generate_slug(&title),
-            view_number: 0,
-            content,
-            title: title,
-        };
+impl News {
+    fn add_blog(&mut self, title: String, content: String, category_id: i32) {
+        let blog = Blog::add_blog(title, content, category_id);
 
-        let list_blog_lenght = self.list_blog.keys().len();
+        let id = get_id_for_blog(&self.blogs);
 
-        self.list_blog
-            .insert((list_blog_lenght + 1).to_string(), blog);
+        self.blogs.insert(id, blog);
     }
 
     pub fn get_blog_by_id(self, blog_id: String) -> Blog {
-        self.list_blog.get(&blog_id).unwrap().clone()
+        self.blogs.get(&blog_id).unwrap().clone()
     }
 
     pub fn get_all_blogs(self) -> HashMap<String, Blog> {
-        self.list_blog
+        self.blogs
     }
 
     pub fn delete_blog(&mut self, blog_id: String) {
-        self.list_blog.remove(&blog_id);
+        self.blogs.remove(&blog_id);
     }
 
     pub fn edit_blog(&mut self, blog_id: String, content: String) {
-        let blog = self.list_blog.get(&blog_id);
+        let blog = self.blogs.get(&blog_id);
 
         match blog {
             Some(blog) => {
@@ -61,14 +56,14 @@ impl ListBlog {
                     ..blog.clone()
                 };
 
-                self.list_blog.insert(blog_id, new_blog);
+                self.blogs.insert(blog_id, new_blog);
             }
             None => (),
         }
     }
 
     pub fn update_blog_view(&mut self, blog_id: String) {
-        let blog = self.list_blog.get(&blog_id);
+        let blog = self.blogs.get(&blog_id);
 
         match blog {
             Some(blog) => {
@@ -77,7 +72,7 @@ impl ListBlog {
                     ..blog.clone()
                 };
 
-                self.list_blog.insert(blog_id, new_blog);
+                self.blogs.insert(blog_id, new_blog);
             }
             None => (),
         }
@@ -105,13 +100,12 @@ mod tests {
     fn test_create_blog() {
         let context = get_context(false);
         testing_env!(context.build());
-        let mut contract = ListBlog::default();
+        let mut contract = News::default();
 
-        contract.add_blog("test blog".to_string(), "Test blog content".to_string());
+        contract.add_blog("test blog".to_string(), "Test blog content".to_string(), 1);
+        println!("value of blog is {:?}", contract.blogs);
 
-        let blog = contract.get_blog_by_id("1".to_string());
-
-        // println!("value of blog is {:?}", contract.list_blog);
+        let blog = contract.get_blog_by_id("0".to_string());
 
         assert_eq!(blog.title, "test blog".to_string());
         assert_eq!(blog.content, "Test blog content".to_string());
